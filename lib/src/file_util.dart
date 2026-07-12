@@ -56,6 +56,10 @@ abstract class FileUtil {
   /// Returns the MIME type string (e.g., 'image/png', 'application/pdf'),
   /// or `null` if the byte signature is not recognized.
   ///
+  /// Note: the `mime` package recognizes a limited set of magic numbers
+  /// (common image, audio, video, and document formats). Formats without a
+  /// registered signature return `null` even if valid.
+  ///
   /// Example:
   /// ```dart
   /// // Reading from a file
@@ -74,5 +78,7 @@ abstract class FileUtil {
   /// final unknownMime = FileUtil.getMimeTypeFromBytes(unknownBytes);
   /// print(unknownMime); // null
   /// ```
-  static String? getMimeTypeFromBytes(List<int> bytes) => lookupMimeType('test', headerBytes: bytes);
+  // The path argument is unused for detection here: magic numbers are checked
+  // first, and an extension-less path cannot produce a fallback match.
+  static String? getMimeTypeFromBytes(List<int> bytes) => lookupMimeType('', headerBytes: bytes);
 }

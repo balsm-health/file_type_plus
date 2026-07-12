@@ -1,3 +1,7 @@
+// Deliberate implementation import: mime does not expose this map publicly.
+// Accepted risk — mime may relocate this file in any release without a major
+// version bump, which would break compilation of this package.
+// ignore: implementation_imports
 import 'package:mime/src/default_extension_map.dart' show defaultExtensionMap;
 
 /// Groups file extensions by category (image, audio, video, etc.).
@@ -17,7 +21,32 @@ class ExtensionsGrouping {
   ///   'audio': {'mp3': 'audio/mpeg', 'wav': 'audio/wav', ...},
   /// }
   /// ```
-  static final categorizedExtensions = _group(defaultExtensionMap);
+  static final categorizedExtensions = _group(_extensionMap);
+
+  /// Extensions missing from the default mime map that this package
+  /// supports anyway.
+  static const _supplementalExtensionMap = {
+    'gz': 'application/gzip',
+    'tgz': 'application/gzip',
+  };
+
+  /// The full extension-to-MIME map used for grouping.
+  static final _extensionMap = {...defaultExtensionMap, ..._supplementalExtensionMap};
+
+  /// Returns the extension-to-MIME mappings matched by [filter].
+  ///
+  /// Runs [filter] over the full default extension map. Used to build the
+  /// extension map of a `FileType` created with a custom
+  /// [ExtensionGroupFilter] (one that is not part of the built-in categories).
+  ///
+  /// Note: unlike [categorizedExtensions], this does not exclude extensions
+  /// already claimed by earlier built-in categories.
+  ///
+  /// The returned map is unmodifiable.
+  static Map<String, String> matching(ExtensionGroupFilter filter) => Map.unmodifiable(<String, String>{
+        for (final entry in _extensionMap.entries)
+          if (filter.test(entry.key, entry.value)) entry.key: entry.value,
+      });
 
   /// Groups extensions into categories based on their MIME types.
   ///
@@ -29,7 +58,8 @@ class ExtensionsGrouping {
   /// and values are their corresponding MIME types.
   ///
   /// Returns a nested map structure with categories as keys and
-  /// extension-MIME mappings as values.
+  /// extension-MIME mappings as values. Both the outer and inner maps are
+  /// unmodifiable so shared category state cannot be mutated by callers.
   static Map<String, Map<String, String>> _group(Map<String, String> extensionMap) {
     final categorized = Map<String, Map<String, String>>.fromEntries(
       _groups.map((filter) => MapEntry(filter.name, <String, String>{})),
@@ -44,7 +74,9 @@ class ExtensionsGrouping {
       }
     });
 
-    return categorized;
+    return Map.unmodifiable(<String, Map<String, String>>{
+      for (final entry in categorized.entries) entry.key: Map.unmodifiable(entry.value),
+    });
   }
 
   /// Ordered list of category filters used for grouping extensions.
@@ -76,8 +108,8 @@ class ExtensionGroupFilter {
   /// A function that tests whether an extension and MIME type match this category.
   ///
   /// Parameters:
-  /// - [extension] - The file extension without the dot (e.g., 'jpg', 'mp3')
-  /// - [mime] - The MIME type string (e.g., 'image/jpeg', 'audio/mpeg')
+  /// - `extension` - The file extension without the dot (e.g., 'jpg', 'mp3')
+  /// - `mime` - The MIME type string (e.g., 'image/jpeg', 'audio/mpeg')
   ///
   /// Returns `true` if the extension/MIME pair belongs to this category.
   final bool Function(String extension, String mime) test;
@@ -125,7 +157,7 @@ class ExtensionGroupFilter {
   ///
   /// Matches MIME types starting with 'video/' or files with 'm3u8' extension
   /// (HLS streaming playlists).
-  static bool _isVideo(String extension, String mime) => mime.startsWith('video/') || extension.contains('m3u8');
+  static bool _isVideo(String extension, String mime) => mime.startsWith('video/') || extension == 'm3u8';
 
   /// Tests if the MIME type represents a document file.
   ///
@@ -137,6 +169,7 @@ class ExtensionGroupFilter {
   /// - E-book formats (EPUB, MOBI, FictionBook)
   /// - Rich Text Format (RTF)
   /// - AbiWord documents
+  /// - Legacy StarOffice/OpenOffice.org formats
   static bool _isDocument(String extension, String mime) =>
       mime.startsWith('application/pdf') ||
       mime.startsWith('application/msword') ||
@@ -150,7 +183,9 @@ class ExtensionGroupFilter {
       mime.startsWith('application/epub+zip') ||
       mime.startsWith('application/x-mobipocket-ebook') ||
       mime.startsWith('application/x-fictionbook+xml') ||
-      mime.startsWith('application/x-abiword');
+      mime.startsWith('application/x-abiword') ||
+      mime.startsWith('application/vnd.stardivision') ||
+      mime.startsWith('application/vnd.sun.xml');
 
   /// Tests if the MIME type or extension represents an HTML file.
   ///
@@ -174,21 +209,36 @@ class ExtensionGroupFilter {
   /// - ZIP, RAR, 7-Zip
   /// - TAR archives (with or without compression)
   /// - GZIP, BZIP2, XZ compression
-  /// - Legacy formats (StuffIt, ARJ, CAB, LZH, ACE, ARC)
-  /// - Z-machine story files
+  /// - Package formats built on archives (JAR, APK, CAB)
+  /// - Legacy formats (StuffIt, ARJ, LZH, ACE, ARC)
+  ///
+  /// Matching is by exact MIME type or well-defined suffix ('+zip',
+  /// '-compressed', 'archive') — never by loose substring, which previously
+  /// misclassified types such as 'application/marc' and
+  /// 'application/vnd.stardivision.*'.
   static bool _isArchive(String extension, String mime) =>
-      mime.contains('zip') ||
-      mime.contains('rar') ||
-      mime.contains('tar') ||
-      mime.contains('gzip') ||
-      mime.contains('bzip') ||
-      mime.contains('7z') ||
-      mime.contains('xz') ||
-      mime.contains('stuffit') ||
-      mime.contains('arj') ||
-      mime.contains('cab') ||
-      mime.contains('lzh') ||
-      mime.contains('ace') ||
-      mime.contains('arc') ||
-      mime.contains('zmachine');
+      _archiveMimeTypes.contains(mime) ||
+      mime.endsWith('+zip') ||
+      mime.endsWith('-compressed') ||
+      mime.endsWith('archive');
+
+  /// Known archive and compression MIME types that the suffix rules in
+  /// [_isArchive] do not cover.
+  static const _archiveMimeTypes = {
+    'application/zip',
+    'application/gzip',
+    'application/x-gzip',
+    'application/x-tar',
+    'application/x-gtar',
+    'application/x-ustar',
+    'application/x-bzip',
+    'application/x-bzip2',
+    'application/x-xz',
+    'application/x-freearc',
+    'application/x-stuffit',
+    'application/x-stuffitx',
+    'application/x-arj',
+    'application/vnd.rar',
+    'application/vnd.dece.zip',
+  };
 }

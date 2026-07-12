@@ -1,6 +1,8 @@
 import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
-import 'package:file_type_plus/file_type_plus.dart';
+
+import 'extension_grouping.dart';
+import 'file_util.dart';
 
 /// Represents a categorized file type with detection capabilities.
 ///
@@ -34,7 +36,13 @@ class FileType extends Equatable {
   ///
   /// Keys are file extensions without dots (e.g., 'jpg', 'mp3').
   /// Values are the corresponding MIME types (e.g., 'image/jpeg', 'audio/mpeg').
+  ///
+  /// The map is unmodifiable.
   final Map<String, String> extensionMap;
+
+  /// The filter that defines this category. Used to classify MIME types that
+  /// are not present in [extensionMap] (e.g. 'image/x-custom').
+  final ExtensionGroupFilter _groupFilter;
 
   /// Creates a FileType from an extension group filter.
   ///
@@ -73,14 +81,17 @@ class FileType extends Equatable {
   /// - [FileType.fromExtensionOrMime] for detecting file types from extensions or MIME types
   FileType(ExtensionGroupFilter groupFilter)
       : value = groupFilter.name,
-        extensionMap = ExtensionsGrouping.categorizedExtensions[groupFilter.name]!;
+        _groupFilter = groupFilter,
+        extensionMap =
+            ExtensionsGrouping.categorizedExtensions[groupFilter.name] ?? ExtensionsGrouping.matching(groupFilter);
 
-  /// Creates a FileType from another FileType enum value.
+  /// Creates a FileType by copying another FileType instance.
   ///
-  /// [value] - The FileType enum value to copy.
-  FileType.copy(FileType value)
-      : value = value.value,
-        extensionMap = value.extensionMap;
+  /// [other] - The FileType instance to copy.
+  FileType.copy(FileType other)
+      : value = other.value,
+        _groupFilter = other._groupFilter,
+        extensionMap = other.extensionMap;
 
   /// Checks if this file type matches any type in the provided list.
   ///
@@ -93,13 +104,15 @@ class FileType extends Equatable {
   ///   print('This is a media file');
   /// }
   /// ```
-  bool isAny(List<FileType> list) => list.map((e) => e.value).contains(value);
+  bool isAny(List<FileType> list) => list.contains(this);
 
   /// Checks if this file type's runtime type matches any type in the provided list.
   ///
   /// This is a utility method for type checking.
   ///
   /// Returns `true` if this object's runtime type is in [list].
+  @Deprecated('Compares runtimeType only, which breaks for subclasses. '
+      'Use `is` checks or isAny instead. Will be removed in a future release.')
   bool isAnyType(List<Type> list) => list.contains(runtimeType);
 
   /// Image file type (jpg, png, gif, svg, webp, bmp, ico, etc.).
@@ -129,10 +142,14 @@ class FileType extends Equatable {
   /// to determine the file category. At least one parameter should be provided.
   ///
   /// Parameters:
-  /// - [extension] - File extension without the dot (e.g., 'jpg', 'mp3').
-  ///   Case-insensitive.
+  /// - [extension] - File extension (e.g., 'jpg', 'mp3'). A single leading
+  ///   dot is tolerated ('.jpg'). Case-insensitive.
   /// - [mimeType] - MIME type string (e.g., 'image/jpeg', 'audio/mpeg').
-  ///   Case-insensitive.
+  ///   Case-insensitive. Parameters such as '; charset=utf-8' are ignored.
+  ///
+  /// When both parameters are provided, [extension] takes precedence.
+  /// A MIME type that is not in any extension map is still classified by its
+  /// category prefix (e.g. 'image/x-custom' is detected as image).
   ///
   /// Returns the matching [FileType], or [FileType.other] if no match is found.
   ///
@@ -147,15 +164,26 @@ class FileType extends Equatable {
   /// ```
   factory FileType.fromExtensionOrMime({String? extension, String? mimeType}) {
     extension = extension?.toLowerCase();
-    mimeType = mimeType?.toLowerCase();
-    if (extension != null || mimeType != null) {
+    if (extension != null && extension.startsWith('.')) {
+      extension = extension.substring(1);
+    }
+    // Strip parameters such as '; charset=utf-8' from Content-Type values.
+    mimeType = mimeType?.split(';').first.trim().toLowerCase();
+
+    if (extension != null && extension.isNotEmpty) {
       for (var fileType in values) {
-        if (extension != null && fileType.extensionMap.containsKey(extension)) {
-          return fileType;
-        }
-        if (mimeType != null && fileType.extensionMap.containsValue(mimeType)) {
-          return fileType;
-        }
+        if (fileType.extensionMap.containsKey(extension)) return fileType;
+      }
+    }
+    if (mimeType != null && mimeType.isNotEmpty) {
+      for (var fileType in values) {
+        if (fileType.extensionMap.containsValue(mimeType)) return fileType;
+      }
+      // MIME types absent from the extension maps still classify by their
+      // category filter (e.g. 'image/x-custom' -> image). The 'other' filter
+      // matches everything, so this loop always returns.
+      for (var fileType in values) {
+        if (fileType._groupFilter.test(extension ?? '', mimeType)) return fileType;
       }
     }
     return other;
@@ -166,16 +194,16 @@ class FileType extends Equatable {
   /// Extracts the file extension from the path and determines the MIME type.
   /// Supports local file paths, Windows paths, and URLs (http, https, file).
   ///
-  /// Special handling:
-  /// - ISM streaming URLs (containing '.ism') are detected as video
-  /// - Query parameters and fragments in URLs are handled
+  /// Query parameters and fragments in URLs are ignored, so
+  /// 'https://example.com/video.mp4?token=abc' is detected as video.
   ///
   /// Parameters:
   /// - [path] - The file path or URL to analyze.
   /// - [mimeType] - Optional explicit MIME type. If provided, it takes
   ///   precedence over path-based detection.
   ///
-  /// Returns the detected [FileType], or [FileType.other] if detection fails.
+  /// Returns the detected [FileType], or [FileType.other] if detection fails
+  /// (including paths that cannot be parsed at all).
   ///
   /// Example:
   /// ```dart
@@ -186,10 +214,20 @@ class FileType extends Equatable {
   /// final type5 = FileType.fromPath('unknown.xyz', 'image/jpeg');
   /// ```
   factory FileType.fromPath(String path, [String? mimeType]) {
-    final uri = Uri.parse(path);
     if (mimeType != null) return FileType.fromExtensionOrMime(mimeType: mimeType);
-    mimeType = FileUtil.getMimeTypeFromPath(uri.path);
-    return FileType.fromExtensionOrMime(mimeType: mimeType);
+    final uri = Uri.tryParse(path);
+    var target = uri?.path ?? path;
+    // Local file names may legally contain '?' or '#', which Uri treats as
+    // query/fragment delimiters. Retry with the raw path for scheme-less input.
+    if (uri != null && !uri.hasScheme && FileUtil.getMimeTypeFromPath(target) == null) {
+      target = path;
+    }
+    // Pass the raw extension too: it covers extensions this package knows
+    // beyond the mime package's map (e.g. 'gz').
+    final dotIndex = target.lastIndexOf('.');
+    var extension = dotIndex >= 0 ? target.substring(dotIndex + 1) : null;
+    if (extension != null && extension.contains('/')) extension = null;
+    return FileType.fromExtensionOrMime(extension: extension, mimeType: FileUtil.getMimeTypeFromPath(target));
   }
 
   /// Creates a FileType from byte data using magic number detection.
@@ -245,5 +283,7 @@ class FileType extends Equatable {
   ///   print('${type.value}: ${type.extensionMap.length} extensions');
   /// }
   /// ```
-  static final values = [image, audio, video, document, html, archive, other];
+  ///
+  /// The list is unmodifiable.
+  static final values = List<FileType>.unmodifiable([image, audio, video, document, html, archive, other]);
 }
