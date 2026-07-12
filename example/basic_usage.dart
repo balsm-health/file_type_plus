@@ -10,7 +10,7 @@ class CustomMediaType extends FileType {
   final Map<String, dynamic> metadata;
 
   /// Create a custom media type by copying from an existing FileType
-  CustomMediaType(FileType baseType, {required this.metadata}) : super.copy(baseType);
+  CustomMediaType(super.baseType, {required this.metadata}) : super.copy();
 
   @override
   String toString() => 'CustomMediaType($value, metadata: $metadata)';
