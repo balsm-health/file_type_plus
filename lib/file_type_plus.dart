@@ -1,17 +1,17 @@
-/// A Flutter library that provides comprehensive state management solutions
-/// and utility functions for building scalable mobile applications.
+/// Utilities for categorizing files into high-level types (image, audio,
+/// video, document, HTML, archive, or other).
 ///
-/// This library includes:
-/// - State management patterns and providers
-/// - Common utility functions and extensions
-/// - Widget helpers and custom components
-/// - Data models and serialization utilities
+/// Detection works from file extensions, MIME types, file paths, URLs, or
+/// byte data (magic numbers).
 ///
 /// Example usage:
 /// ```dart
-/// import 'package:your_package_name/your_library_name.dart';
+/// import 'package:file_type_plus/file_type_plus.dart';
+///
+/// final type = FileType.fromPath('photo.jpg');
+/// print(type == FileType.image); // true
 /// ```
-library file_type_plus;
+library;
 
 export 'src/extension_grouping.dart';
 export 'src/file_type.dart';

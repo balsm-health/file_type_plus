@@ -5,6 +5,47 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-12
+
+### Fixed
+- `FileType.fromExtensionOrMime()` now truly prefers `extension` over `mimeType`
+  when both are provided (previously the category order in `FileType.values`
+  could make the MIME type win, e.g. extension `mp3` + MIME `image/jpeg`
+  returned image instead of audio)
+- `FileType(ExtensionGroupFilter)` no longer crashes with a null-check error
+  when given a custom filter; the extension map is computed from the filter
+- `FileType.fromPath()` no longer throws `FormatException` on unparseable
+  input; it returns `FileType.other` as documented
+- `FileType.fromPath()` now detects local file names containing `#` or `?`
+  (e.g. `my#file.mp4`)
+- Archive detection no longer misclassifies unrelated MIME types via loose
+  substring matching (`application/marc`, `application/vnd.stardivision.*`,
+  `application/vnd.ahead.space`, and others); matching is now by exact MIME
+  type or well-defined suffix
+- `gz` and `tgz` are now detected as archives (missing from the `mime`
+  package's extension map)
+
+### Changed
+- MIME type matching ignores parameters (`text/html; charset=utf-8` now
+  detects as html) and falls back to category-prefix classification for
+  unlisted types (`image/x-custom` now detects as image)
+- `fromExtensionOrMime()` tolerates a leading dot in `extension` (`.jpg`)
+- `FileType.extensionMap`, `FileType.values`, and
+  `ExtensionsGrouping.categorizedExtensions` are now unmodifiable (mutating
+  them previously corrupted detection globally)
+- Legacy StarOffice/OpenOffice.org MIME types now classify as document
+- Minimum Dart SDK is now declared as `^3.2.0` (the previous `>=2.12.0`
+  claim was never satisfiable given the `mime ^2.0.0` dependency)
+
+### Deprecated
+- `FileType.isAnyType()` — compares `runtimeType` only, which breaks for
+  subclasses; use `is` checks or `isAny()` instead
+
+### Development
+- Enabled `dart_flutter_team_lints` in `analysis_options.yaml` (it was
+  declared as a dev dependency but never included) and fixed all findings
+- Added regression tests for all fixes (105 tests total)
+
 ## [1.0.1] - 2026-02-03
 
 ### Documentation
@@ -129,6 +170,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance optimizations
 - Additional MIME type mappings
 
+[1.1.0]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v1.1.0
 [1.0.1]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v1.0.1
 [1.0.0]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v1.0.0
 [0.1.2]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v0.1.2
