@@ -18,7 +18,7 @@ Thank you for your interest in contributing to File Type Plus! We welcome contri
 ## Before You Contribute
 
 Before starting work on a significant change, please:
-- Check the [issue tracker](https://github.com/hossameldinmi/file_type_plus/issues) for existing issues
+- Check the [issue tracker](https://github.com/balsm-health/file_type_plus/issues) for existing issues
 - Open a new issue to discuss your proposed changes
 - Wait for feedback from maintainers
 
@@ -123,7 +123,7 @@ We welcome feature requests! Please:
 
 ## Questions?
 
-- Open an [issue](https://github.com/hossameldinmi/file_type_plus/issues) for questions
+- Open an [issue](https://github.com/balsm-health/file_type_plus/issues) for questions
 - Check existing [examples](example/) for usage patterns
 - Review the [README](README.md) for documentation
 

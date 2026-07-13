@@ -3,11 +3,11 @@
 </h2>
 
 <p align="center">
-   <a href="https://github.com/hossameldinmi/file_type_plus/actions/workflows/build.yml">
-    <img src="https://github.com/hossameldinmi/file_type_plus/actions/workflows/build.yml/badge.svg?branch=main" alt="Github action">
+   <a href="https://github.com/balsm-health/file_type_plus/actions/workflows/build.yml">
+    <img src="https://github.com/balsm-health/file_type_plus/actions/workflows/build.yml/badge.svg?branch=main" alt="Github action">
   </a>
-  <a href="https://codecov.io/github/hossameldinmi/file_type_plus">
-    <img src="https://codecov.io/github/hossameldinmi/file_type_plus/graph/badge.svg?token=rl6lgx4K5q" alt="Code Coverage">
+  <a href="https://codecov.io/github/balsm-health/file_type_plus">
+    <img src="https://codecov.io/github/balsm-health/file_type_plus/graph/badge.svg?token=rl6lgx4K5q" alt="Code Coverage">
   </a>
   <a href="https://pub.dev/packages/file_type_plus">
     <img alt="Pub Package" src="https://img.shields.io/pub/v/file_type_plus">

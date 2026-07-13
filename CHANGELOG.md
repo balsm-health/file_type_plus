@@ -170,9 +170,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Performance optimizations
 - Additional MIME type mappings
 
-[1.1.0]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v1.1.0
-[1.0.1]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v1.0.1
-[1.0.0]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v1.0.0
-[0.1.2]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v0.1.2
-[0.1.1]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v0.1.1
-[0.1.0]: https://github.com/hossameldinmi/file_type_plus/releases/tag/v0.1.0
+[1.1.0]: https://github.com/balsm-health/file_type_plus/releases/tag/v1.1.0
+[1.0.1]: https://github.com/balsm-health/file_type_plus/releases/tag/v1.0.1
+[1.0.0]: https://github.com/balsm-health/file_type_plus/releases/tag/v1.0.0
+[0.1.2]: https://github.com/balsm-health/file_type_plus/releases/tag/v0.1.2
+[0.1.1]: https://github.com/balsm-health/file_type_plus/releases/tag/v0.1.1
+[0.1.0]: https://github.com/balsm-health/file_type_plus/releases/tag/v0.1.0
