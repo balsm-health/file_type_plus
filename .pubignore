@@ -1,0 +1,6 @@
+# Keep the published archive small: test assets alone are ~15 MB
+# (sample_image.jpg is 13 MB). Tests run from the repo and CI, not
+# from the published package.
+test/
+tool/
+coverage/
