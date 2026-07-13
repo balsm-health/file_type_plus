@@ -104,7 +104,9 @@ class FileType extends Equatable {
   ///   print('This is a media file');
   /// }
   /// ```
-  bool isAny(List<FileType> list) => list.contains(this);
+  // Compares by value, not ==: Equatable equality includes runtimeType, which
+  // would exclude FileType subclasses whose value matches.
+  bool isAny(List<FileType> list) => list.any((e) => e.value == value);
 
   /// Checks if this file type's runtime type matches any type in the provided list.
   ///

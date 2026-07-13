@@ -2,6 +2,10 @@ import 'package:file_type_plus/file_type_plus.dart';
 import 'package:test/test.dart';
 import 'assets/fixture.dart';
 
+class _SubclassFileType extends FileType {
+  _SubclassFileType(super.groupFilter);
+}
+
 void main() {
   group('FileType', () {
     group('constants', () {
@@ -329,6 +333,13 @@ void main() {
 
       test('should return false for empty list', () {
         expect(FileType.image.isAny([]), isFalse);
+      });
+
+      test('should match FileType subclasses by value', () {
+        final subclass = _SubclassFileType(ExtensionGroupFilter.image);
+        expect(subclass.isAny([FileType.image, FileType.audio]), isTrue);
+        expect(FileType.image.isAny([subclass]), isTrue);
+        expect(subclass.isAny([FileType.audio, FileType.video]), isFalse);
       });
     });
 
