@@ -15,11 +15,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        # 3.5 is the oldest SDK the dev dependencies resolve on (package:test
+        # 3.5.0 is the oldest SDK the dev dependencies resolve on (package:test
         # 1.26.x requires ^3.5.0). The consumer floor of 3.2 is verified by
         # the consumer-floor job below, which needs no dev dependencies.
-        sdk: [ '3.5', stable ]
+        # setup-dart requires fully qualified versions.
+        sdk: [ '3.5.0', stable ]
 
     steps:
       - uses: actions/checkout@v4
@@ -68,7 +70,7 @@ jobs:
 
       - uses: dart-lang/setup-dart@9a04e6d73cca37bd455e0608d7e5092f881fd603
         with:
-          sdk: '3.2'
+          sdk: '3.2.0'
 
       - name: Consume package on the declared SDK floor
         run: |
