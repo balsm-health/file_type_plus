@@ -1,0 +1,103 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.5.0 is the oldest SDK the dev dependencies resolve on (package:test
+        # 1.26.x requires ^3.5.0). The consumer floor of 3.2 is verified by
+        # the consumer-floor job below, which needs no dev dependencies.
+        # setup-dart requires fully qualified versions.
+        sdk: [ '3.5.0', stable ]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@9a04e6d73cca37bd455e0608d7e5092f881fd603
+        with:
+          sdk: ${{ matrix.sdk }}
+
+      - name: Install dependencies
+        run: dart pub get
+
+      # Analyzer options (team lints, formatter.page_width) target the
+      # current stable toolchain; older SDKs only need to pass tests.
+      - name: Analyze project source
+        if: matrix.sdk == 'stable'
+        run: dart analyze
+
+      - name: Run tests
+        if: matrix.sdk != 'stable'
+        run: dart test
+
+      - name: Run tests with coverage
+        if: matrix.sdk == 'stable'
+        run: |
+          dart pub global activate coverage
+          dart pub global run coverage:test_with_coverage
+
+      - name: Codecov
+        if: matrix.sdk == 'stable'
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+          verbose: true
+          # The wrapper's GPG verification of the codecov CLI fails on GitHub
+          # runners with "Can't check signature: No public key".
+          skip_validation: true
+
+  # Proves the declared SDK floor: resolves and runs the package as a
+  # consumer would on Dart 3.2, without this repo's dev dependencies.
+  consumer-floor:
+    name: Consumer smoke test on Dart 3.2
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dart-lang/setup-dart@9a04e6d73cca37bd455e0608d7e5092f881fd603
+        with:
+          sdk: '3.2.0'
+
+      - name: Consume package on the declared SDK floor
+        run: |
+          mkdir -p /tmp/consumer/bin
+          cat > /tmp/consumer/pubspec.yaml <<EOF
+          name: consumer_smoke
+          environment:
+            sdk: ^3.2.0
+          dependencies:
+            file_type_plus:
+              path: $GITHUB_WORKSPACE
+          EOF
+          cat > /tmp/consumer/bin/main.dart <<'EOF'
+          import 'package:file_type_plus/file_type_plus.dart';
+
+          void main() {
+            final checks = <String, bool>{
+              'fromPath': FileType.fromPath('a.jpg') == FileType.image,
+              'precedence': FileType.fromExtensionOrMime(extension: 'mp3', mimeType: 'image/jpeg') == FileType.audio,
+              'mime params': FileType.fromExtensionOrMime(mimeType: 'text/html; charset=utf-8') == FileType.html,
+              'gz': FileType.fromExtensionOrMime(extension: 'gz') == FileType.archive,
+              'unparseable path': FileType.fromPath('http://[x') == FileType.other,
+            };
+            checks.forEach((name, ok) => print('$name: ${ok ? 'ok' : 'FAILED'}'));
+            if (checks.values.contains(false)) {
+              throw StateError('consumer smoke test failed');
+            }
+          }
+          EOF
+          cd /tmp/consumer && dart pub get && dart run bin/main.dart

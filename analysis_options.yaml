@@ -1,8 +1,11 @@
 # Additional information about this file can be found at
 # https://dart.dev/guides/language/analysis-options
-# linter:
-#   rules:
-#     unnecessary_library_directive: false
+include: package:dart_flutter_team_lints/analysis_options.yaml
 
-formatter:  
+linter:
+  rules:
+    # This project formats to a 120-character page width (see formatter below).
+    lines_longer_than_80_chars: false
+
+formatter:
   page_width: 120

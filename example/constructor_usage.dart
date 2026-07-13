@@ -56,6 +56,7 @@ void main() {
   print('Restricted image type: ${restrictedImage.value}');
   print('Is jpg allowed? ${restrictedImage.isExtensionAllowed('jpg')}');
   print('Is webp allowed? ${restrictedImage.isExtensionAllowed('webp')}');
+  print('Allowed extensions: ${restrictedImage.allowedExtensionMap.keys.toList()}');
 
   final restrictedVideo = RestrictedMediaType(
     ExtensionGroupFilter.video,
@@ -118,7 +119,7 @@ class CustomFileType extends FileType {
   ///
   /// [filter] - The extension group filter defining the category
   /// [metadata] - Custom metadata to attach to this file type
-  CustomFileType(ExtensionGroupFilter filter, {required this.metadata}) : super(filter);
+  CustomFileType(super.filter, {required this.metadata});
 
   @override
   String toString() => 'CustomFileType($value, metadata: $metadata)';
@@ -137,9 +138,9 @@ class RestrictedMediaType extends FileType {
   /// [filter] - The base extension group filter
   /// [allowedExtensions] - Set of extensions to allow from the category
   RestrictedMediaType(
-    ExtensionGroupFilter filter, {
+    super.filter, {
     required this.allowedExtensions,
-  }) : super(filter);
+  });
 
   /// Checks if a specific extension is allowed
   bool isExtensionAllowed(String extension) {
@@ -170,7 +171,7 @@ class FileTypeValidator extends FileType {
   ///
   /// [filter] - The extension group filter
   /// [maxSize] - Maximum file size in bytes
-  FileTypeValidator(ExtensionGroupFilter filter, {required this.maxSize}) : super(filter);
+  FileTypeValidator(super.filter, {required this.maxSize});
 
   /// Validates if a file size is within the allowed limit
   bool validateSize(int sizeInBytes) {

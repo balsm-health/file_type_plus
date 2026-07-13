@@ -1,6 +1,10 @@
-import 'package:file_type_plus/src/file_type.dart';
+import 'package:file_type_plus/file_type_plus.dart';
 import 'package:test/test.dart';
 import 'assets/fixture.dart';
+
+class _SubclassFileType extends FileType {
+  _SubclassFileType(super.groupFilter);
+}
 
 void main() {
   group('FileType', () {
@@ -330,14 +334,23 @@ void main() {
       test('should return false for empty list', () {
         expect(FileType.image.isAny([]), isFalse);
       });
+
+      test('should match FileType subclasses by value', () {
+        final subclass = _SubclassFileType(ExtensionGroupFilter.image);
+        expect(subclass.isAny([FileType.image, FileType.audio]), isTrue);
+        expect(FileType.image.isAny([subclass]), isTrue);
+        expect(subclass.isAny([FileType.audio, FileType.video]), isFalse);
+      });
     });
 
     group('isAnyType', () {
       test('should return true when type matches', () {
+        // ignore: deprecated_member_use_from_same_package
         expect(FileType.image.isAnyType([FileType]), isTrue);
       });
 
       test('should return false when type does not match', () {
+        // ignore: deprecated_member_use_from_same_package
         expect(FileType.image.isAnyType([String, int]), isFalse);
       });
     });
@@ -398,14 +411,14 @@ void main() {
 
     group('fromBytes', () {
       test('should use provided mimeType when available', () async {
-        final file = Fixture.sample_image;
+        final file = Fixture.sampleImage;
         final bytes = await file.readAsBytes();
         final result = FileType.fromBytes(bytes, file.mimeType);
         expect(result, equals(FileType.image));
       });
 
       test('should return other for unknown bytes', () async {
-        final unknownBytes = Fixture.sample_unknown_file;
+        final unknownBytes = Fixture.sampleUnknownFile;
         final result = FileType.fromBytes(await unknownBytes.readAsBytes());
         expect(result, equals(FileType.other));
       });
@@ -413,68 +426,68 @@ void main() {
 
     group('asset files', () {
       test('should detect MP3 audio file from path', () async {
-        final result = FileType.fromPath(Fixture.pathes.sample_audio);
+        final result = FileType.fromPath(Fixture.pathes.sampleAudio);
         expect(result, equals(FileType.audio));
       });
 
       test('should detect MP3 audio file from bytes', () async {
-        final file = Fixture.sample_audio;
+        final file = Fixture.sampleAudio;
         final bytes = await file.readAsBytes();
         final result = FileType.fromBytes(bytes);
         expect(result, equals(FileType.audio));
       });
-      test('should detect MP3 audio file from bytes', () async {
-        final file = Fixture.sample_audio;
+      test('should detect MP3 audio file from bytes with explicit MIME type', () async {
+        final file = Fixture.sampleAudio;
         final bytes = await file.readAsBytes();
         final result = FileType.fromBytes(bytes, 'audio/mpeg');
         expect(result, equals(FileType.audio));
       });
 
       test('should detect JPG image file from path (uppercase extension)', () {
-        final result = FileType.fromPath(Fixture.pathes.sample_image.toUpperCase());
+        final result = FileType.fromPath(Fixture.pathes.sampleImage.toUpperCase());
         expect(result, equals(FileType.image));
       });
 
       test('should detect JPG image file from bytes (uppercase)', () async {
-        final file = Fixture.sample_image;
+        final file = Fixture.sampleImage;
         final bytes = await file.readAsBytes();
         final result = FileType.fromBytes(bytes);
         expect(result, equals(FileType.image));
       });
 
       test('should detect PDF document file from path', () {
-        final result = FileType.fromPath(Fixture.pathes.sample_document);
+        final result = FileType.fromPath(Fixture.pathes.sampleDocument);
         expect(result, equals(FileType.document));
       });
 
       test('should detect PDF document file from bytes', () async {
-        final file = Fixture.sample_document;
+        final file = Fixture.sampleDocument;
         final bytes = await file.readAsBytes();
         final result = FileType.fromBytes(bytes);
         expect(result, equals(FileType.document));
       });
 
       test('should detect MP4 video file from path', () {
-        final path = Fixture.pathes.sample_video;
+        final path = Fixture.pathes.sampleVideo;
         final result = FileType.fromPath(path);
         expect(result, equals(FileType.video));
       });
 
       test('should detect MP4 video file from bytes', () async {
-        final file = Fixture.sample_video;
+        final file = Fixture.sampleVideo;
         final bytes = await file.readAsBytes();
         final result = FileType.fromBytes(bytes);
         expect(result, equals(FileType.video));
       });
 
       test('should detect jpg image file from path (lowercase)', () {
-        final path = Fixture.pathes.sample_image;
+        final path = Fixture.pathes.sampleImage;
         final result = FileType.fromPath(path);
         expect(result, equals(FileType.image));
       });
 
       test('should detect jpg image file from bytes (lowercase)', () async {
-        final file = Fixture.sample_image;
+        final file = Fixture.sampleImage;
         final bytes = await file.readAsBytes();
         final result = FileType.fromBytes(bytes);
         expect(result, equals(FileType.image));
@@ -528,6 +541,81 @@ void main() {
         final result = FileType.copy(FileType.image);
         expect(result.extensionMap, equals(FileType.image.extensionMap));
         expect(result.extensionMap.containsKey('jpg'), isTrue);
+      });
+    });
+
+    group('regressions', () {
+      test('extension takes precedence over MIME type regardless of category order', () {
+        // 'mp3' is audio; 'image/jpeg' is image. Image precedes audio in
+        // FileType.values, so this used to return image.
+        final result = FileType.fromExtensionOrMime(extension: 'mp3', mimeType: 'image/jpeg');
+        expect(result, equals(FileType.audio));
+      });
+
+      test('MIME type parameters are ignored', () {
+        final result = FileType.fromExtensionOrMime(mimeType: 'text/html; charset=utf-8');
+        expect(result, equals(FileType.html));
+      });
+
+      test('unlisted MIME types classify by category prefix', () {
+        expect(FileType.fromExtensionOrMime(mimeType: 'image/x-custom'), equals(FileType.image));
+        expect(FileType.fromExtensionOrMime(mimeType: 'audio/x-custom'), equals(FileType.audio));
+        expect(FileType.fromExtensionOrMime(mimeType: 'video/x-custom'), equals(FileType.video));
+      });
+
+      test('extension with leading dot is accepted', () {
+        expect(FileType.fromExtensionOrMime(extension: '.jpg'), equals(FileType.image));
+      });
+
+      test('fromPath returns other for unparseable input instead of throwing', () {
+        expect(FileType.fromPath('http://[invalid'), equals(FileType.other));
+      });
+
+      test('fromPath handles # in local file names', () {
+        expect(FileType.fromPath('my#file.mp4'), equals(FileType.video));
+      });
+
+      test('fromPath ignores URL query parameters', () {
+        expect(FileType.fromPath('https://example.com/video.mp4?token=abc'), equals(FileType.video));
+      });
+
+      test('fromPath detects m3u8 HLS playlists as video', () {
+        expect(FileType.fromPath('https://example.com/stream.m3u8'), equals(FileType.video));
+      });
+
+      test('constructor supports custom filters without crashing', () {
+        final custom = FileType(ExtensionGroupFilter('json', (String ext, String mime) => ext == 'json'));
+        expect(custom.value, equals('json'));
+        expect(custom.extensionMap, equals({'json': 'application/json'}));
+      });
+
+      test('extensionMap is unmodifiable', () {
+        expect(() => FileType.image.extensionMap['exe'] = 'image/fake', throwsUnsupportedError);
+      });
+
+      test('values list is unmodifiable', () {
+        expect(() => FileType.values.add(FileType.other), throwsUnsupportedError);
+      });
+
+      test('archive matching no longer misclassifies by substring', () {
+        // 'application/marc' contains 'arc'; StarOffice types contain 'tar'.
+        expect(FileType.fromExtensionOrMime(mimeType: 'application/marc'), equals(FileType.other));
+        expect(
+          FileType.fromExtensionOrMime(mimeType: 'application/vnd.stardivision.writer'),
+          equals(FileType.document),
+        );
+      });
+
+      test('common archive formats still detected', () {
+        expect(FileType.fromExtensionOrMime(extension: 'jar'), equals(FileType.archive));
+        expect(FileType.fromExtensionOrMime(extension: 'apk'), equals(FileType.archive));
+        expect(FileType.fromExtensionOrMime(mimeType: 'application/x-7z-compressed'), equals(FileType.archive));
+      });
+
+      test('gz and tgz detected as archive despite missing from mime package map', () {
+        expect(FileType.fromExtensionOrMime(extension: 'gz'), equals(FileType.archive));
+        expect(FileType.fromExtensionOrMime(extension: 'tgz'), equals(FileType.archive));
+        expect(FileType.fromPath('backup.tar.gz'), equals(FileType.archive));
       });
     });
   });

@@ -11,7 +11,7 @@
 /// - path_detection.dart
 /// - bytes_detection.dart
 /// - filtering_files.dart
-library quick_start;
+library;
 
 import 'package:file_type_plus/file_type_plus.dart';
 
@@ -44,5 +44,7 @@ void main() {
 
   // 6. All types
   print('\n7. Available Types:');
-  FileType.values.forEach((t) => print('   - ${t.value}'));
+  for (final t in FileType.values) {
+    print('   - ${t.value}');
+  }
 }
